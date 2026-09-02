@@ -2,24 +2,36 @@ version: '3.8'
 
 services:
   backend:
-    ## Configurar la imagen
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: springboot-backend
+    ports:
+      - "8080:8080"
     networks:
-      - product-network
+      - app-network
+    # Healthcheck verificando el endpoint específico solicitado
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/products || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 3
-      start_period: 20s
+      # Alpine Linux usa wget por defecto (no curl)
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:8080/api/products || exit 1"]
+      interval: 15s      # Cada cuánto se hace la prueba
+      timeout: 5s        # Cuánto espera a que responda la petición
+      retries: 5         # Cuántas veces falla antes de marcarlo "unhealthy"
+      start_period: 20s  # Tiempo de gracia para que la JVM de Spring Boot inicie
 
   frontend:
-    ## Configurar la imagen
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: react-frontend
+    ports:
+      - "80:80"
+    networks:
+      - app-network
     depends_on:
       backend:
-        condition: service_healthy
-    networks:
-      - product-network
+        condition: service_healthy # Espera explícitamente a que el healthcheck pase
 
 networks:
-  product-network:
+  app-network:
     driver: bridge
